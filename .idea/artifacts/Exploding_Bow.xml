@@ -1,0 +1,9 @@
+<component name="ArtifactManager">
+  <artifact type="jar" name="Exploding_Bow">
+    <output-path>$USER_HOME$/Desktop/1.19.2測試伺服器/plugins</output-path>
+    <root id="archive" name="Exploding_Bow.jar">
+      <element id="module-output" name="Exploding_Bow" />
+      <element id="file-copy" path="$PROJECT_DIR$/plugin.yml" />
+    </root>
+  </artifact>
+</component>

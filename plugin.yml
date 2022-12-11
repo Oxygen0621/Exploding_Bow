@@ -1,0 +1,12 @@
+name: ExplodingBow
+main: com.xiaoyu1163.exploding_bow.Main
+version: 1.0
+description: bossbarmarquee
+author: xiaoyu1163
+commands:
+  summonExplosiveBow:
+    usage: /summonExplosiveBow
+    description: 取得爆炸弓
+  summonICE_Walker:
+    usage: /summonICE_Walker
+    description: 取得冰霜行者
