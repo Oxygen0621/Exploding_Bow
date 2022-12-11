@@ -166,7 +166,7 @@ public class Main extends JavaPlugin implements Listener {
 
     public void LetPlayerShootArrow(Player p){
         Arrow shot = p.launchProjectile(Arrow.class);
-        shot.setVelocity(shot.getVelocity().multiply(1.0));
+        shot.setVelocity(shot.getVelocity().multiply(1.5));
     }//讓玩家射箭
     public static boolean isHuman(Entity e){
         if (e instanceof Player){
