@@ -32,9 +32,10 @@ import java.util.Timer;
 
 public class Main extends JavaPlugin implements Listener {
     private Plugin plugin;
-    public static int StoredArrow=0;
-    // 儲存玩家是否按住了右鍵
-    private boolean isRightClickPressed = false;
+    public static int StoredArrow = 0;
+    public int taskID = 0;
+    public int taskTimer = 0;
+    public boolean TaskIsOnline = false;
 
     @Override
     public void onLoad(){
@@ -63,16 +64,18 @@ public class Main extends JavaPlugin implements Listener {
         @EventHandler
         public void onPlayerInteract(PlayerInteractEvent event) {
             // 檢查玩家按下的按鍵是否為右鍵
-
-            if (event.getAction() == Action.RIGHT_CLICK_AIR ||
-                    event.getAction() == Action.RIGHT_CLICK_BLOCK) {
-                // 儲存玩家按下了右鍵
-                isRightClickPressed = true;
-                event.setCancelled(true);
-                // 儲存箭矢
-                getLogger().info("Right in");
+            if (!(event.getAction() == Action.RIGHT_CLICK_AIR ||
+                    event.getAction() == Action.RIGHT_CLICK_BLOCK)) {
+                return;
             }
-            Inventory inv = event.getPlayer().getInventory();
+            Player p = event.getPlayer();
+            Inventory inv = p.getInventory();
+            ItemStack itemInMainHand = p.getInventory().getItemInMainHand();
+            if (itemInMainHand.getType() != Material.BOW ){
+                return;
+            }
+            getLogger().info("Right in");
+
             int inv_Amount = 0;
             for (ItemStack i : inv){
                 if (i != null &&i.getType() == Material.ARROW){
@@ -88,13 +91,24 @@ public class Main extends JavaPlugin implements Listener {
 
         // 監聽玩家射箭
         @EventHandler
-        public void onEntityShootBOW(EntityShootBowEvent e){
+        public void onShoot(EntityShootBowEvent e){
+
+            Player p = (Player) e.getEntity();
+            /*
+            ItemStack itemInHand = p.getInventory().getItemInMainHand();
+            if (itemInHand.getItemMeta().getDisplayName().equals("§c爆炸弓") || itemInHand.getItemMeta().getLore().equals(new ArrayList<>(
+                    Arrays.asList("§f§l效果：","§f於落下位置產生爆炸", "§f還在改進")))) {
+                return;
+            }
+             */
             // 檢查射擊者是否為玩家
             if (!(isHuman(e.getEntity()))){
                 return;
             }
+            if (!(e.getProjectile() instanceof Arrow)){
+                return;
+            }
 
-            Player p = (Player) e.getEntity();
             Inventory inv = p.getInventory();
             Arrow arrow = (Arrow) e.getProjectile();
             arrow.remove();
@@ -116,13 +130,16 @@ public class Main extends JavaPlugin implements Listener {
                 },20L);
             }
             */ //無法正常使用的代碼
-            LetPlayerShootArrow(p);
+            if (!TaskIsOnline){
+                LetPlayerShootArrow(p);
+            }
         }
 
     }
     private class ArrowListener implements Listener {
         @EventHandler
         public void onEntityShootBow(EntityShootBowEvent e){
+            //getLogger().info("Exploding Bow");
             if (!(e.getProjectile() instanceof Arrow)){
                 return;
             }
@@ -221,23 +238,53 @@ public class Main extends JavaPlugin implements Listener {
     }
 
 
-    private void LetPlayerShootArrow(Player p) {
+    public void LetPlayerShootArrow(Player p) {
+        //getLogger().info("LetShoot");
+        TaskIsOnline = true;
+        Inventory inv = p.getInventory();
+        ItemStack itemInHand = p.getInventory().getItemInMainHand();
+
+
+        taskID = new BukkitRunnable(){
+            @Override
+            public void run(){
+                getLogger().info("taskTimer、StoredArrow:"+taskTimer+","+StoredArrow);
+                if (taskTimer>=StoredArrow || p.getInventory().getItemInMainHand().getType() != Material.BOW){
+                    TaskIsOnline = false;
+                    Bukkit.getScheduler().cancelTask(taskID);
+                    taskTimer=0;
+                }
+                Arrow arrow = p.launchProjectile(Arrow.class);
+                if (itemInHand.getItemMeta().getDisplayName().equals("§c爆炸弓") || itemInHand.getItemMeta().getLore() == (new ArrayList<>(
+                        Arrays.asList("§f§l效果：","§f於落下位置產生爆炸", "§f還在改進")))) {
+                    arrow.setMetadata("ExplodingBow", new FixedMetadataValue(plugin,true));
+                }
+                arrow.setShooter(p);
+                inv.removeItem(new ItemStack(Material.ARROW,1));
+                taskTimer++;
+            }
+        }.runTaskTimer(plugin,0,2).getTaskId();
+
+
+
+        /*
+        final int[] taskTimes = {0};
         BukkitRunnable ShootTask = new BukkitRunnable() {
             @Override
             public void run() {
-                Arrow shot = p.launchProjectile(Arrow.class);
-                shot.setVelocity(shot.getVelocity().multiply(1));
-                Inventory inv = p.getInventory();
+                p.launchProjectile(Arrow.class);
                 inv.removeItem(new ItemStack(Material.ARROW, 1));
+                taskTimes[0]++;
             }
         };
 
         // 設定延遲並重複執行
-        for (int i=0;i<StoredArrow;i++){
-            ShootTask.runTaskLater(plugin,2);
-        }
+            int taskID = ShootTask.runTaskTimer((Plugin) plugin,0,2).getTaskId();
+            if (taskID == StoredArrow){
+                Bukkit.getScheduler().cancelTask(taskID);
+            }
 
-
+        */
     }//讓玩家射箭
     public static boolean isHuman(Entity e){
         if (e instanceof Player){
