@@ -1,13 +1,18 @@
 package com.xiaoyu1163.exploding_bow;
 
+import net.md_5.bungee.api.ChatColor;
 import org.bukkit.Material;
 import org.bukkit.block.BlockFace;
 import org.bukkit.entity.*;
+import org.bukkit.event.EventException;
 import org.bukkit.event.block.Action;
 import org.bukkit.event.block.BlockCanBuildEvent;
 import org.bukkit.event.entity.*;
 import org.bukkit.event.player.PlayerInteractEvent;
+import org.bukkit.event.player.PlayerJoinEvent;
 import org.bukkit.event.player.PlayerMoveEvent;
+import org.bukkit.event.player.PlayerQuitEvent;
+import org.bukkit.inventory.Inventory;
 import org.bukkit.inventory.ItemStack;
 import org.bukkit.inventory.PlayerInventory;
 import org.bukkit.metadata.FixedMetadataValue;
@@ -19,6 +24,7 @@ import org.bukkit.event.EventHandler;
 import org.bukkit.event.Listener;
 import org.bukkit.Location;
 import org.bukkit.World;
+import org.bukkit.scheduler.BukkitRunnable;
 
 import javax.swing.*;
 import java.util.*;
@@ -26,8 +32,7 @@ import java.util.Timer;
 
 public class Main extends JavaPlugin implements Listener {
     private Plugin plugin;
-
-
+    public static int StoredArrow=0;
     // 儲存玩家是否按住了右鍵
     private boolean isRightClickPressed = false;
 
@@ -53,20 +58,32 @@ public class Main extends JavaPlugin implements Listener {
 
 
     private class ShootListener implements Listener {
+
         // 監聽玩家按鍵事件
         @EventHandler
         public void onPlayerInteract(PlayerInteractEvent event) {
             // 檢查玩家按下的按鍵是否為右鍵
+
             if (event.getAction() == Action.RIGHT_CLICK_AIR ||
                     event.getAction() == Action.RIGHT_CLICK_BLOCK) {
                 // 儲存玩家按下了右鍵
                 isRightClickPressed = true;
-
+                event.setCancelled(true);
                 // 儲存箭矢
                 getLogger().info("Right in");
             }
-
-
+            Inventory inv = event.getPlayer().getInventory();
+            int inv_Amount = 0;
+            for (ItemStack i : inv){
+                if (i != null &&i.getType() == Material.ARROW){
+                    inv_Amount += i.getAmount();
+                }
+            }
+            if (inv_Amount >= 6){
+                StoredArrow = 6;
+            } else {
+                StoredArrow = inv_Amount;
+            }
         }
 
         // 監聽玩家射箭
@@ -76,9 +93,29 @@ public class Main extends JavaPlugin implements Listener {
             if (!(isHuman(e.getEntity()))){
                 return;
             }
+
             Player p = (Player) e.getEntity();
+            Inventory inv = p.getInventory();
             Arrow arrow = (Arrow) e.getProjectile();
             arrow.remove();
+
+
+            /*
+            for (int i=0;i<StoredArrow;i++){
+                if (i==0){
+                    LetPlayerShootArrow(p);
+                    inv.removeItem(new ItemStack(Material.ARROW,1));
+                    i++;
+                } // 第一次執行時先執行一次run()，先執行後延遲
+                Bukkit.getServer().getScheduler().scheduleSyncDelayedTask(plugin, new Runnable() {
+                @Override
+                public void run() {
+                    LetPlayerShootArrow(p);
+                    inv.removeItem(new ItemStack(Material.ARROW,1));
+                    }
+                },20L);
+            }
+            */ //無法正常使用的代碼
             LetPlayerShootArrow(p);
         }
 
@@ -161,12 +198,46 @@ public class Main extends JavaPlugin implements Listener {
             player.setCooldown(item.getType(),0);
 
         }// 未成功
+        @EventHandler
+        public void onPlayerJoin(PlayerJoinEvent e){
+            if (!isHuman(e.getPlayer())){
+                return;
+            }
+
+            Player p = e.getPlayer();
+            e.setJoinMessage("§f§l+ &r&f| "+p.getName());
+        }// 加入訊息替換
+        @EventHandler
+        public void onPlayerQuit(PlayerQuitEvent e){
+            if (!(isHuman(e.getPlayer()))){
+                return;
+            }
+
+            Player p = e.getPlayer();
+            e.setQuitMessage("§c§l- &r&f| "+p.getName());
+        }// 離開訊息替換
+
+
     }
 
 
-    public void LetPlayerShootArrow(Player p){
-        Arrow shot = p.launchProjectile(Arrow.class);
-        shot.setVelocity(shot.getVelocity().multiply(1.5));
+    private void LetPlayerShootArrow(Player p) {
+        BukkitRunnable ShootTask = new BukkitRunnable() {
+            @Override
+            public void run() {
+                Arrow shot = p.launchProjectile(Arrow.class);
+                shot.setVelocity(shot.getVelocity().multiply(1));
+                Inventory inv = p.getInventory();
+                inv.removeItem(new ItemStack(Material.ARROW, 1));
+            }
+        };
+
+        // 設定延遲並重複執行
+        for (int i=0;i<StoredArrow;i++){
+            ShootTask.runTaskLater(plugin,2);
+        }
+
+
     }//讓玩家射箭
     public static boolean isHuman(Entity e){
         if (e instanceof Player){
